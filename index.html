@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembuat Laporan Kerentanan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0a192f;
+            --secondary: #64ffda;
+            --danger: #ff5555;
+            --text: #e6f1ff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        body {
+            background-color: var(--primary);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: var(--secondary);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2rem;
+        }
+        
+        .card {
+            background: rgba(10, 25, 47, 0.8);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(100, 255, 218, 0.1);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(2, 12, 27, 0.7);
+            border: 1px solid rgba(100, 255, 218, 0.2);
+            border-radius: 4px;
+            color: var(--text);
+            font-size: 16px;
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: var(--secondary);
+            color: #0a192f;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        #reportOutput {
+            background: rgba(2, 12, 27, 0.7);
+            border: 1px solid rgba(100, 255, 218, 0.2);
+            border-radius: 4px;
+            padding: 25px;
+            white-space: pre-wrap;
+            font-size: 16px;
+            line-height: 1.7;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pembuat Laporan Kerentanan</h1>
+        
+        <div class="card">
+            <form id="reportForm">
+                <div class="form-grid">
+                    <div>
+                        <div class="form-group">
+                            <label for="yourName">Nama Anda</label>
+                            <input type="text" id="yourName" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="yourEmail">Email</label>
+                            <input type="email" id="yourEmail" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="yourWA">Nomor WhatsApp</label>
+                            <input type="tel" id="yourWA" required>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="form-group">
+                            <label for="targetUrl">URL Website</label>
+                            <input type="url" id="targetUrl" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vulnerablePart">Bagian yang Rentan</label>
+                            <input type="text" id="vulnerablePart" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vulnerabilityType">Jenis Kerentanan</label>
+                            <select id="vulnerabilityType">
+                                <option value="SQL Injection">SQL Injection</option>
+                                <option value="XSS">Cross-Site Scripting (XSS)</option>
+                                <option value="CSRF">Cross-Site Request Forgery (CSRF)</option>
+                                <option value="LFI">Local File Inclusion (LFI)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="payload">Payload yang Digunakan</label>
+                    <textarea id="payload" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="steps">Langkah Reproduksi</label>
+                    <textarea id="steps"></textarea>
+                </div>
+                
+                <div>
+                    <button type="button" id="generateBtn" class="btn">Buat Laporan</button>
+                    <button type="reset" class="btn btn-danger">Reset</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="card" id="resultContainer" style="display: none;">
+            <h2 style="margin-bottom: 20px;">Laporan Kerentanan</h2>
+            <div id="reportOutput"></div>
+            <div style="margin-top: 20px;">
+                <button id="copyBtn" class="btn">Salin Laporan</button>
+                <button id="newReportBtn" class="btn btn-danger">Buat Baru</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simpan data form ke localStorage
+            function saveFormData() {
+                const formData = {
+                    name: document.getElementById('yourName').value,
+                    email: document.getElementById('yourEmail').value,
+                    wa: document.getElementById('yourWA').value,
+                    url: document.getElementById('targetUrl').value,
+                    part: document.getElementById('vulnerablePart').value,
+                    type: document.getElementById('vulnerabilityType').value,
+                    payload: document.getElementById('payload').value,
+                    steps: document.getElementById('steps').value
+                };
+                localStorage.setItem('vulnReportData', JSON.stringify(formData));
+            }
+            
+            // Load data form dari localStorage
+            function loadFormData() {
+                const savedData = localStorage.getItem('vulnReportData');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    document.getElementById('yourName').value = data.name || '';
+                    document.getElementById('yourEmail').value = data.email || '';
+                    document.getElementById('yourWA').value = data.wa || '';
+                    document.getElementById('targetUrl').value = data.url || '';
+                    document.getElementById('vulnerablePart').value = data.part || '';
+                    document.getElementById('vulnerabilityType').value = data.type || 'SQL Injection';
+                    document.getElementById('payload').value = data.payload || '';
+                    document.getElementById('steps').value = data.steps || '';
+                }
+            }
+            
+            // Auto-save ketika form diisi
+            document.getElementById('reportForm').addEventListener('input', saveFormData);
+            
+            // Load data saat halaman dimuat
+            loadFormData();
+            
+            // Generate laporan
+            document.getElementById('generateBtn').addEventListener('click', function() {
+                const name = document.getElementById('yourName').value;
+                const email = document.getElementById('yourEmail').value;
+                const wa = document.getElementById('yourWA').value;
+                const url = document.getElementById('targetUrl').value;
+                const part = document.getElementById('vulnerablePart').value;
+                const type = document.getElementById('vulnerabilityType').value;
+                const payload = document.getElementById('payload').value;
+                const steps = document.getElementById('steps').value || "Tidak disediakan";
+                
+                if (!name || !email || !wa || !url || !part || !payload) {
+                    alert("Harap isi semua field yang wajib!");
+                    return;
+                }
+                
+                const report = `Halo Tim Keamanan IT/Developer,
+
+Perkenalkan saya ${name}, seorang pengamat keamanan siber.
+Saya menemukan kerentanan di website berikut:
+
+URL: ${url}
+Bagian Rentan: ${part}
+Jenis Kerentanan: ${type}
+
+==================== DETAIL ====================
+Payload yang Digunakan:
+${payload}
+
+Langkah Reproduksi:
+${steps}
+
+==================== KONTAK ====================
+Email: ${email}
+WhatsApp: ${wa}
+
+Saya berharap mendapatkan sertifikat apresiasi atas temuan ini.
+Terima kasih atas kerjasamanya.
+
+Salam,
+${name}
+`;
+
+                document.getElementById('reportOutput').textContent = report;
+                document.getElementById('resultContainer').style.display = 'block';
+                document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth' });
+            });
+            
+            // Fungsi copy yang 100% bekerja
+            document.getElementById('copyBtn').addEventListener('click', function() {
+                const reportText = document.getElementById('reportOutput').textContent;
+                const textarea = document.createElement('textarea');
+                textarea.value = reportText;
+                document.body.appendChild(textarea);
+                textarea.select();
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        alert('Laporan berhasil disalin!');
+                    } else {
+                        throw new Error('Gagal menyalin');
+                    }
+                } catch (err) {
+                    alert('Gagal menyalin, silakan coba lagi atau salin manual');
+                }
+                
+                document.body.removeChild(textarea);
+            });
+            
+            // Reset form
+            document.getElementById('newReportBtn').addEventListener('click', function() {
+                document.getElementById('reportForm').reset();
+                localStorage.removeItem('vulnReportData');
+                document.getElementById('resultContainer').style.display = 'none';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>
